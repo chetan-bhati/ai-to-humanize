@@ -114,8 +114,9 @@ export function humanizeText(text: string): string {
   let finalDoc = nlp(processed);
   
   // Apply occasional conversational fillers to sentences
-  const sentences = finalDoc.sentences().map(s => {
-    let txt = s.text();
+  const sentenceList = finalDoc.sentences().json() as any[];
+  const transformed = sentenceList.map(s => {
+    let txt = s.text;
     const roll = Math.random();
     
     if (roll < 0.15 && txt.length > 30) {
@@ -126,7 +127,7 @@ export function humanizeText(text: string): string {
     return txt;
   });
 
-  return sentences.join(" ");
+  return transformed.join(" ");
 }
 
 export const getWordCount = (text: string) => text.trim().split(/\s+/).filter(w => w.length > 0).length;
