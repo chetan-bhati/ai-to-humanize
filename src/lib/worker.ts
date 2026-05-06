@@ -4,6 +4,7 @@ import { pipeline, env } from '@huggingface/transformers';
 env.allowLocalModels = true;
 env.allowRemoteModels = true; 
 env.localModelPath = '/models/';
+env.useBrowserCache = true; // Use IndexedDB to keep the model persistent on user's device
 
 class PipelineSingleton {
   static task = 'text2text-generation';
@@ -12,7 +13,17 @@ class PipelineSingleton {
 
   static async getInstance(progress_callback?: (data: any) => void) {
     if (this.instance === null) {
-      this.instance = pipeline(this.task as any, this.model, { progress_callback });
+      // Try to use WebGPU for 10x faster performance, fall back to WASM
+      this.instance = pipeline(this.task as any, this.model, { 
+        progress_callback,
+        device: 'webgpu', 
+      }).catch(async (err) => {
+        console.warn("WebGPU not supported, falling back to WASM:", err);
+        return pipeline(this.task as any, this.model, { 
+          progress_callback,
+          device: 'wasm',
+        });
+      });
     }
     return this.instance;
   }
