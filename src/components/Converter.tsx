@@ -45,6 +45,9 @@ const Converter = () => {
     if (!inputText.trim()) return;
     
     setIsProcessing(true);
+    setOutputText(''); // Clear previous result
+    setAnalysis([]);   // Clear previous analysis
+    setVariationScore(0); // Reset stats
     
     if (engineMode === 'fast') {
       setTimeout(() => {

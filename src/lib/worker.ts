@@ -2,8 +2,8 @@ import { pipeline, env } from '@huggingface/transformers';
 
 // Configure environment for local model serving
 env.allowLocalModels = true;
-env.allowRemoteModels = true; // Fallback to remote if local not found during dev
-env.localModelPath = '/models/'; // Path relative to public folder in browser
+env.allowRemoteModels = true; 
+env.localModelPath = '/models/';
 
 class PipelineSingleton {
   static task = 'text2text-generation';
@@ -33,22 +33,22 @@ function fixGrammar(text: string): string {
 
 function postProcess(text: string): string {
   let cleaned = text.trim();
-  cleaned = cleaned.replace(/^paraphrase:\s*/i, '');
-  cleaned = cleaned.replace(/^humanize:\s*/i, '');
-  cleaned = cleaned.replace(/^rewrite naturally:\s*/i, '');
+  // Remove common model-prefixed responses
+  cleaned = cleaned.replace(/^(paraphrase|humanize|rewrite naturally):\s*/i, '');
   
-  const sentences = cleaned.split(/[.!?]+\s+/);
-  const uniqueSentences = Array.from(new Set(sentences));
-  return fixGrammar(uniqueSentences.join(' '));
+  // Basic grammar cleanup
+  return fixGrammar(cleaned);
 }
 
 function chunkText(text: string): string[] {
-  const paragraphs = text.split(/\n\s*\n/);
+  // Split by double newlines (paragraphs)
+  const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0);
   const chunks: string[] = [];
   let currentChunk = "";
 
   for (const para of paragraphs) {
-    if ((currentChunk.length + para.length) > 1200) { // Safer limit for flan-t5-base
+    // 800 chars is a safe limit for flan-t5-base to keep coherence
+    if ((currentChunk.length + para.length) > 800) { 
       if (currentChunk) chunks.push(currentChunk.trim());
       currentChunk = para;
     } else {
@@ -63,15 +63,14 @@ self.addEventListener('message', async (event) => {
   const { text } = event.data;
 
   try {
-    // If the instance is already loaded, notify the UI immediately
-    if (PipelineSingleton.instance !== null) {
-      self.postMessage({ 
-        status: 'progress', 
-        data: { file: 'Model loaded', progress: 100 } 
-      });
-    }
+    // Immediate feedback that we started
+    self.postMessage({ 
+      status: 'progress', 
+      data: { file: 'Initializing AI engine...', progress: 5 } 
+    });
 
     const generator = await PipelineSingleton.getInstance((data) => {
+      // Pass through Transformers.js download/load progress
       self.postMessage({ status: 'progress', data });
     });
 
@@ -79,19 +78,22 @@ self.addEventListener('message', async (event) => {
     const results: string[] = [];
 
     for (let i = 0; i < chunks.length; i++) {
+      const segmentProgress = Math.round((i / chunks.length) * 100);
       self.postMessage({ 
         status: 'progress', 
-        data: { file: `Processing segment ${i + 1}/${chunks.length}`, progress: (i / chunks.length) * 100 } 
+        data: { 
+          file: `Processing segment ${i + 1} of ${chunks.length}...`, 
+          progress: segmentProgress 
+        } 
       });
 
-      // Shorter, more direct prompt for better T5 performance
       const prompt = `paraphrase naturally: ${chunks[i]}`;
       
       const output = await generator(prompt, {
-        max_new_tokens: 300,
-        temperature: 0.3, // Lower creativity = fewer hallucinations
+        max_new_tokens: 512, // Increased for longer paragraphs
+        temperature: 0.3,
         top_p: 0.9,
-        repetition_penalty: 1.3, // Stronger penalty for looping
+        repetition_penalty: 1.3,
         do_sample: true,
       });
 
@@ -103,6 +105,7 @@ self.addEventListener('message', async (event) => {
       output: results.join("\n\n")
     });
   } catch (error: any) {
+    console.error("Worker Error:", error);
     self.postMessage({ status: 'error', error: error.message });
   }
 });
