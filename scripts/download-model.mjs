@@ -23,9 +23,14 @@ async function downloadFile(url, dest) {
 
   return new Promise((resolve, reject) => {
     https.get(url, (response) => {
-      // Handle all redirect status codes (301, 302, 307, 308)
+      // Handle redirects (including relative URLs)
       if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-        downloadFile(response.headers.location, dest).then(resolve).catch(reject);
+        try {
+          const redirectUrl = new URL(response.headers.location, url).href;
+          downloadFile(redirectUrl, dest).then(resolve).catch(reject);
+        } catch (e) {
+          reject(new Error(`Invalid redirect URL: ${response.headers.location}`));
+        }
         return;
       }
 
@@ -66,7 +71,7 @@ async function main() {
     } catch (err) {
       console.error(`❌ Error downloading ${fileName}: ${err.message}`);
       
-      // Attempt alternative filenames if the primary one fails (e.g. non-quantized)
+      // Fallback for non-quantized if primary fails
       if (fileName.includes('_quantized')) {
         const alt = fileName.replace('_quantized', '');
         console.log(`🔄 Trying non-quantized version: ${alt}...`);
