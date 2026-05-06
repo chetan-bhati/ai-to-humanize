@@ -86,6 +86,7 @@ async function main() {
   }
   
   console.log('🎉 Model download complete!');
+  process.exit(0);
 }
 
 main();
