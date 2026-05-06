@@ -5,16 +5,12 @@ import nlp from 'compromise';
  */
 
 const transitions = [
-  "To be honest,",
-  "Think about it this way:",
-  "The thing is,",
+  "In fact,",
   "Essentially,",
-  "In many ways,",
-  "Beyond that,",
-  "Interestingly enough,",
+  "Interestingly,",
   "What's more,",
   "Basically,",
-  "At the end of the day,"
+  "Overall,"
 ];
 
 const patterns: Record<string, string[]> = {
@@ -119,7 +115,8 @@ export function humanizeText(text: string): string {
     let txt = s.text;
     const roll = Math.random();
     
-    if (roll < 0.15 && txt.length > 30) {
+    // Only inject transitions if the sentence is long and hasn't had one yet
+    if (roll < 0.1 && txt.length > 40 && !txt.includes(',')) {
       const transition = transitions[Math.floor(Math.random() * transitions.length)];
       txt = `${transition} ${txt.charAt(0).toLowerCase()}${txt.slice(1)}`;
     }
@@ -127,7 +124,17 @@ export function humanizeText(text: string): string {
     return txt;
   });
 
-  return transformed.join(" ");
+  let result = transformed.join(" ");
+  
+  // Post-processing grammar fix (a/an)
+  result = result.replace(/\b(a)\s+([aeiou])/gi, (match, a, vowel) => {
+    return (a === 'A' ? 'An' : 'an') + ' ' + vowel;
+  });
+  result = result.replace(/\b(an)\s+([^aeiouh\W])/gi, (match, an, consonant) => {
+    return (an === 'An' ? 'A' : 'a') + ' ' + consonant;
+  });
+
+  return result;
 }
 
 export const getWordCount = (text: string) => text.trim().split(/\s+/).filter(w => w.length > 0).length;

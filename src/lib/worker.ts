@@ -18,18 +18,28 @@ class PipelineSingleton {
   }
 }
 
+function fixGrammar(text: string): string {
+  let fixed = text;
+  // Fix "a" before vowels
+  fixed = fixed.replace(/\b(a)\s+([aeiou])/gi, (match, a, vowel) => {
+    return (a === 'A' ? 'An' : 'an') + ' ' + vowel;
+  });
+  // Fix "an" before consonants
+  fixed = fixed.replace(/\b(an)\s+([^aeiouh\W])/gi, (match, an, consonant) => {
+    return (an === 'An' ? 'A' : 'a') + ' ' + consonant;
+  });
+  return fixed;
+}
+
 function postProcess(text: string): string {
   let cleaned = text.trim();
   cleaned = cleaned.replace(/^paraphrase:\s*/i, '');
   cleaned = cleaned.replace(/^humanize:\s*/i, '');
   cleaned = cleaned.replace(/^rewrite naturally:\s*/i, '');
   
-  // Basic hallucination check: look for common fake facts like "University of California" 
-  // if they weren't in the original (this is hard without full context but we can do basic cleaning)
-  
   const sentences = cleaned.split(/[.!?]+\s+/);
   const uniqueSentences = Array.from(new Set(sentences));
-  return uniqueSentences.join(' ');
+  return fixGrammar(uniqueSentences.join(' '));
 }
 
 function chunkText(text: string): string[] {
