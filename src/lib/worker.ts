@@ -53,6 +53,14 @@ self.addEventListener('message', async (event) => {
   const { text } = event.data;
 
   try {
+    // If the instance is already loaded, notify the UI immediately
+    if (PipelineSingleton.instance !== null) {
+      self.postMessage({ 
+        status: 'progress', 
+        data: { file: 'Model loaded', progress: 100 } 
+      });
+    }
+
     const generator = await PipelineSingleton.getInstance((data) => {
       self.postMessage({ status: 'progress', data });
     });
