@@ -12,13 +12,13 @@ export class TransformerEngine {
     }
   }
 
-  async humanize(text: string, onProgress?: (progress: number) => void): Promise<string> {
+  async humanize(text: string, onProgress?: (progress: number, status?: string) => void): Promise<string> {
     if (!this.worker) return text;
 
     return new Promise((resolve, reject) => {
       const handleMessage = (event: MessageEvent<WorkerMessage>) => {
         if (event.data.status === 'progress') {
-          if (onProgress) onProgress(event.data.data.progress || 0);
+          if (onProgress) onProgress(event.data.data.progress || 0, event.data.data.file);
         } else if (event.data.status === 'complete') {
           this.worker?.removeEventListener('message', handleMessage);
           resolve(event.data.output);

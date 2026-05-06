@@ -15,6 +15,7 @@ const Converter = () => {
   const [engineMode, setEngineMode] = useState<'fast' | 'ultra'>('fast');
   const [loadProgress, setLoadProgress] = useState(0);
   const [loadingModel, setLoadingModel] = useState(false);
+  const [statusText, setStatusText] = useState('');
 
   // Hydration fix
   const [mounted, setMounted] = useState(false);
@@ -55,11 +56,12 @@ const Converter = () => {
       }, 1000);
     } else {
       setLoadingModel(true);
+      setStatusText('Initializing Model...');
       try {
         const transformer = getTransformer();
-        const humanized = await transformer.humanize(inputText, (p) => {
-          // Transformers.js progress is already 0-100
+        const humanized = await transformer.humanize(inputText, (p, status) => {
           setLoadProgress(Math.round(p));
+          if (status) setStatusText(status);
         });
         setOutputText(humanized);
         setAnalysis(analyzeText(humanized));
@@ -230,7 +232,7 @@ const Converter = () => {
               {loadingModel && (
                 <div style={{ marginTop: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--primary)', marginBottom: '0.4rem' }}>
-                    <span>Downloading Model...</span>
+                    <span>{loadProgress < 100 ? 'Downloading Model...' : (statusText || 'Processing...')}</span>
                     <span>{loadProgress}%</span>
                   </div>
                   <div style={{ height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
